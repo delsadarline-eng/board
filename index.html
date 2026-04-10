@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard | Passed Pawn Premier Strategies</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Cormorant+Garamond:ital,wght@1,400&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --black:      #0D0D0D;
+  --black-soft: #141414;
+  --brown:      #3D1A14;
+  --gold:       #C9A84C;
+  --gold-light: #E2C97E;
+  --gold-dark:  #8B6914;
+  --cream:      #EDE5CE;
+  --cream-light:#F7F2E7;
+  --white:      #FFFFFF;
+  --gray:       #555;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--white);
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Chess board bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: repeating-conic-gradient(#1a1a1a 0% 25%, transparent 0% 50%);
+  background-size: 44px 44px;
+  opacity: 0.45;
+  z-index: 0;
+}
+
+/* ── Layout ── */
+.layout {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Chess strip ── */
+.chess {
+  display: flex; height: 9px; width: 100%; flex-shrink: 0;
+}
+.chess span { flex: 1; }
+.chess.gd span:nth-child(odd)  { background: var(--gold); }
+.chess.gd span:nth-child(even) { background: var(--black); }
+.gold-bar { height: 3px; background: var(--gold); display: block; }
+
+/* ── Header ── */
+.header {
+  background: var(--brown);
+  border-bottom: 3px solid var(--gold);
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 20px;
+}
+.brand { display: flex; flex-direction: column; }
+.brand-top {
+  font-size: 8px; letter-spacing: 4px;
+  color: var(--gold); font-weight: 700;
+  text-transform: uppercase; margin-bottom: 3px;
+}
+.brand-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; color: var(--white);
+  font-weight: 700; line-height: 1;
+}
+.brand-name em { color: var(--gold); font-style: italic; }
+
+.header-title {
+  flex: 1; text-align: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; color: var(--white);
+  font-style: italic; line-height: 1;
+}
+.header-title em { color: var(--gold); font-style: normal; }
+
+.counter { text-align: right; }
+.counter-label {
+  font-size: 8px; letter-spacing: 3px;
+  color: var(--gold); font-weight: 600;
+  text-transform: uppercase; margin-bottom: 2px;
+}
+.counter-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 52px; color: var(--gold);
+  font-weight: 900; line-height: 1;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.counter-num.bump { transform: scale(1.25); }
+
+/* ── Main ── */
+.main {
+  overflow: hidden;
+  padding: 18px 32px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Empty state ── */
+.empty {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; gap: 16px;
+}
+.empty-pawn {
+  font-size: 80px; color: var(--gold);
+  opacity: 0.25;
+  animation: breathe 3s ease-in-out infinite;
+}
+.empty h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; color: var(--cream);
+  font-style: italic;
+}
+.empty p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; color: var(--gray);
+  font-style: italic;
+}
+
+/* ── Grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-dark) var(--black-soft);
+}
+.grid::-webkit-scrollbar { width: 4px; }
+.grid::-webkit-scrollbar-track { background: var(--black-soft); }
+.grid::-webkit-scrollbar-thumb { background: var(--gold-dark); }
+
+/* ── Card ── */
+.card {
+  background: var(--brown);
+  border: 1px solid var(--gold-dark);
+  border-top: 3px solid var(--gold);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+  animation: cardIn 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+  transition: border-color 0.4s, box-shadow 0.4s, background 0.4s;
+}
+.card.new {
+  border-color: var(--gold);
+  background: #2a1a08;
+  box-shadow: 0 0 28px rgba(201,168,76,0.5);
+}
+
+/* Number watermark */
+.card-num {
+  position: absolute;
+  top: 8px; right: 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 30px; color: var(--gold);
+  opacity: 0.18; font-weight: 900; line-height: 1;
+}
+.card-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; color: var(--white);
+  font-weight: 700; line-height: 1.2;
+  margin-bottom: 4px; padding-right: 32px;
+}
+.card-company {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px; color: var(--gold-light);
+  font-style: italic;
+  margin-bottom: 4px; line-height: 1.3;
+}
+.card-website {
+  font-size: 9px; color: var(--gold-dark);
+  letter-spacing: 0.5px; margin-bottom: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-meta {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(201,168,76,0.2);
+  margin-top: 2px;
+}
+.card-time {
+  font-size: 9px; color: var(--gray);
+  letter-spacing: 1px;
+}
+.card-crown { font-size: 11px; color: var(--gold); opacity: 0.5; }
+
+/* ── Footer ── */
+.footer {
+  background: var(--black-soft);
+  border-top: 2px solid var(--gold);
+  padding: 9px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.footer-quote {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; color: var(--gold);
+  font-style: italic;
+}
+.footer-status {
+  font-size: 8px; color: var(--gray);
+  letter-spacing: 3px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #22c55e;
+  animation: blink 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.footer-url {
+  font-size: 9px; color: var(--gold-dark);
+  letter-spacing: 1px;
+}
+
+/* ── Animations ── */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(-18px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes breathe {
+  0%,100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 0.4;  transform: scale(1.04); }
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Header -->
+  <div>
+    <div class="chess gd">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="header">
+      <div class="brand">
+        <span class="brand-top">Passed Pawn Premier Strategies</span>
+        <span class="brand-name">The <em>Grandmaster's</em> Playbook</span>
+      </div>
+      <div class="header-title">
+        Players in the <em>Room</em>
+      </div>
+      <div class="counter">
+        <div class="counter-label">Signed In</div>
+        <div class="counter-num" id="counter">0</div>
+      </div>
+    </div>
+    <div class="chess gd">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="empty" id="empty">
+      <div class="empty-pawn">♟</div>
+      <h2 id="waitingText">Waiting for players to sign in...</h2>
+      <p>Tap the NFC card to claim your spot on the board</p>
+    </div>
+    <div class="grid" id="grid" style="display:none;"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-quote">"A pawn with a plan becomes a queen." ♛</div>
+    <div class="footer-status">
+      <div class="dot"></div>
+      Live &nbsp;·&nbsp; Refreshing every 4 seconds
+    </div>
+    <div class="footer-url">passedpawnpremier.com</div>
+  </div>
+
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPQ0kNluB1VNTNIYIqKhHHaXoHF_ou1AqQalU4LYdCsGnDUGVr4ppfs1-5CigpdXkp/exec';
+
+let knownIds  = new Set();
+let lastCount = 0;
+let dots      = '';
+
+// Animate waiting text
+setInterval(() => {
+  dots = dots.length >= 3 ? '' : dots + '.';
+  const el = document.getElementById('waitingText');
+  if (el) el.textContent = 'Waiting for players to sign in' + dots;
+}, 700);
+
+function truncate(str, max) {
+  if (!str) return '';
+  return str.length > max ? str.slice(0, max) + '…' : str;
+}
+function cleanUrl(url) {
+  if (!url) return '';
+  return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+}
+
+function buildCard(attendee, index, isNew) {
+  const card = document.createElement('div');
+  card.className = 'card' + (isNew ? ' new' : '');
+  card.dataset.id = attendee.id;
+
+  // Remove new highlight after 3.5s
+  if (isNew) {
+    setTimeout(() => card.classList.remove('new'), 3500);
+  }
+
+  const websiteHtml = attendee.website
+    ? `<div class="card-website">🌐 ${truncate(cleanUrl(attendee.website), 34)}</div>`
+    : '';
+
+  card.innerHTML = `
+    <div class="card-num">${index + 1}</div>
+    <div class="card-name">${truncate(attendee.name, 26)}</div>
+    <div class="card-company">${truncate(attendee.company, 30)}</div>
+    ${websiteHtml}
+    <div class="card-meta">
+      <span class="card-time">♟ ${attendee.checked_in || 'Just now'}</span>
+      <span class="card-crown">♛</span>
+    </div>
+  `;
+  return card;
+}
+
+async function refresh() {
+  try {
+    const res  = await fetch(SCRIPT_URL + '?t=' + Date.now());
+    const data = await res.json();
+    const list = data.attendees || [];
+
+    const empty  = document.getElementById('empty');
+    const grid   = document.getElementById('grid');
+    const counter = document.getElementById('counter');
+
+    if (list.length === 0) {
+      empty.style.display = 'flex';
+      grid.style.display  = 'none';
+      counter.textContent = '0';
+      lastCount = 0;
+      return;
+    }
+
+    // Show grid
+    empty.style.display = 'none';
+    grid.style.display  = 'grid';
+
+    // Counter bump animation
+    if (list.length !== lastCount) {
+      counter.textContent = list.length;
+      counter.classList.add('bump');
+      setTimeout(() => counter.classList.remove('bump'), 400);
+      lastCount = list.length;
+    }
+
+    // Find new entries
+    const newIds = new Set(list.map(a => String(a.id)));
+    const added  = [...newIds].filter(id => !knownIds.has(id));
+
+    if (added.length > 0) {
+      // Rebuild grid
+      grid.innerHTML = '';
+      list.forEach((a, i) => {
+        const isNew = added.includes(String(a.id));
+        grid.appendChild(buildCard(a, i, isNew));
+      });
+      // Scroll to show newest
+      setTimeout(() => { grid.scrollTop = grid.scrollHeight; }, 300);
+      knownIds = newIds;
+    }
+
+  } catch (err) {
+    // Silent fail — keep current display
+  }
+}
+
+// Start
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>
